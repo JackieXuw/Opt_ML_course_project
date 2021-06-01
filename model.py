@@ -91,19 +91,15 @@ def load_data():
 def run(lr=1e-1,mini_batch_size=100,nb_epochs=100,nb_hidden=100,nb_layers=2,dropout=0.):
     train_input, train_target, test_input, test_target = load_data()
     model = Net(nb_hidden=nb_hidden,nb_layers=nb_layers, dropout=dropout)
-
+    start = datetime.datetime.now()
     model.train()
     train_model(model, train_input, train_target,lr=lr,mini_batch_size=mini_batch_size,nb_epochs=nb_epochs)
     nb_train_errors = compute_nb_errors(model.eval(), train_input, train_target)
-    print('Train error {:0.2f}% '
-          .format((100 * nb_train_errors) / test_input.size(0)))
     nb_test_errors= compute_nb_errors(model.eval(), test_input, test_target)
-    print('Test error {:0.2f}% '
-          .format((100 * nb_test_errors) / test_input.size(0)))
+    exec_time = (datetime.datetime.now() - start).microseconds
+
+    return nb_train_errors,nb_test_errors,exec_time
 
 
 for i in range(5):
-    start = datetime.datetime.now()
     run()
-    exec_time = (datetime.datetime.now() - start).microseconds
-    print("Execution time: ", exec_time)
