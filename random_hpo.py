@@ -42,7 +42,7 @@ def generate_discrete_loguniform(low, high, n, base=2):
     return np.power(base, generate_discrete_uniform(low, high, n))
 
 
-a = random_hyperparameters({'lr': (0, 1, 'uniform'),
+example = random_hyperparameters({'lr': (0, 1, 'uniform'),
                         'batch_size': (0, 4, 'discrete'),
                         'hidden': (8, 12, 'discrete_loguniform'),
                         'layers': (1, 1, 'fixed'),
