@@ -82,7 +82,7 @@ class TuneBO:
         self.exec_time_gp.optimize()
 
     def get_acquisition(self, type='EI'):
-        obj_mean, obj_var = self.test_erro_gp.predict(self.candidates)
+        obj_mean, obj_var = self.test_erro_gp.predict(np.array(self.candidates))
         obj_mean = obj_mean.squeeze()
         obj_var = obj_var.squeeze()
 
@@ -96,7 +96,7 @@ class TuneBO:
 
     def make_step(self):
         acq = self.get_acquisition()
-        maximizer = self.candidates[np.argmax(acq), :]
+        maximizer = self.candidates[np.argmax(acq)]
         next_point = dict(zip(self.hyper_param_names,
                               maximizer))
         maximizer = np.expand_dims(maximizer, axis=0)
@@ -104,17 +104,17 @@ class TuneBO:
         train_error, test_error, exec_time = self.get_obj(next_point)
         self.best_obj = min(test_error[0, 0], self.best_obj)
         self.train_erro_gp.set_XY(np.vstack([self.train_erro_gp.X, maximizer]),
-                                  np.vstakc([self.train_erro_gp.Y, train_error])
+                                  np.vstack([self.train_erro_gp.Y, train_error])
                                   )
         self.train_erro_gp.optimize()
 
         self.test_erro_gp.set_XY(np.vstack([self.test_erro_gp.X, maximizer]),
-                                  np.vstakc([self.test_erro_gp.Y, test_error])
+                                  np.vstack([self.test_erro_gp.Y, test_error])
                                   )
         self.test_erro_gp.optimize()
 
         self.exec_time_gp.set_XY(np.vstack([self.exec_time_gp.X, maximizer]),
-                                  np.vstakc([self.exec_time_gp.Y, exec_time])
+                                  np.vstack([self.exec_time_gp.Y, exec_time])
                                   )
         self.exec_time_gp.optimize()
 

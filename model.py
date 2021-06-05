@@ -89,6 +89,11 @@ def load_data():
 
 
 def run(lr=1e-1,mini_batch_size=100,nb_epochs=100,nb_hidden=100,nb_layers=2,dropout=0.):
+    #mini_batch_size = int(mini_batch_size)
+    #nb_epochs = int(nb_epochs)
+    #nb_hidden = int(nb_hidden)
+    #nb_layers = int(nb_layers)
+
     train_input, train_target, test_input, test_target = load_data()
     model = Net(nb_hidden=nb_hidden,nb_layers=nb_layers, dropout=dropout)
     start = datetime.datetime.now()
