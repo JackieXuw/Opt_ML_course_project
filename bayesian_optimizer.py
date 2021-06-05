@@ -2,9 +2,10 @@
 Implement Bayesian optimizer for tuning hyperparameters.
 """
 import numpy as np
+from scipy.stats import norm
 import GPy
 import itertools
-import
+
 
 class TuneBO:
 
@@ -16,71 +17,105 @@ class TuneBO:
                                                        self.hyper_param_names))
                                )
         self.kernel_var = 0.1
+        self.noise_level = 0.1
+        self.num_eps = 1e-6
         self.set_kernel()
-        self.setup_optimizer()
         self.init_hyper_param = init_hyper_param
+        self.evaluation_history = []   # each item: (point, performance_metric)
+        self.setup_optimizer()
 
-    def get_obj(self, hyper_param):
-
-
-
-
+    def get_obj(self, hyper_param_point_dict):
+        train_error, test_error, exec_time = \
+            self.obj_fun(**hyper_param_point_dict)
+        self.evaluation_history.append((hyper_param_point_dict,
+                                        [train_error, test_error, exec_time]))
+        train_error = np.expand_dims(np.array([train_error]), axis=1)
+        test_error = np.expand_dims(np.array([test_error]), axis=1)
+        exec_time = np.expand_dims(np.array([exec_time]), axis=1)
+        return train_error, test_error, exec_time
 
     def set_kernel(self):
-        self.obj_kernel = GPy.kern.RBF(input_dim=len(self.candidates[0]),
-                                    variance=self.kernel_var,
-                                lengthscale=1.0,
-                                ARD=True)
+        self.train_error_kernel = GPy.kern.RBF(input_dim=
+                                               len(self.candidates[0]),
+                                               variance=self.kernel_var,
+                                               lengthscale=1.0,
+                                               ARD=True)
+
+        self.test_error_kernel = GPy.kern.RBF(input_dim=
+                                              len(self.candidates[0]),
+                                              variance=self.kernel_var,
+                                              lengthscale=1.0,
+                                              ARD=True)
+
+        self.exec_time_kernel = GPy.kern.RBF(input_dim=len(self.candidates[0]),
+                                             variance=self.kernel_var,
+                                             lengthscale=1.0,
+                                             ARD=True)
 
     def setup_optimizer(self):
         # The statistical model of our objective function
-        self.gp_obj = GPy.models.GPRegression(self.x0_arr,
-                                              init_obj_val_arr,
-                                              self.kernel_list[0],
-                                              noise_var=self.noise_level ** 2)
+        init_param_point = dict(zip(self.hyper_param_names,
+                                    self.init_hyper_param))
+        init_train_error, init_test_error, init_exec_time = \
+            self.get_obj(init_param_point)
+        init_X = np.expand_dims(np.array(self.init_hyper_param), axis=0)
+        self.best_obj = init_test_error
+        self.train_erro_gp = GPy.models.GPRegression(init_X,
+                                                     init_train_error,
+                                                     self.train_error_kernel,
+                                                     noise_var=
+                                                     self.noise_level ** 2)
+        self.train_erro_gp.optimize()
 
-        self.gp_constr_list = []
-        for i in range(self.opt_problem.num_constrs):
-            self.gp_constr_list.append(
-                GPy.models.GPRegression(self.x0_arr,
-                                        np.expand_dims(
-                                            init_constr_val_arr[:, i], axis=1),
-                                        self.kernel_list[i+1],
-                                        noise_var=self.noise_level ** 2))
+        self.test_erro_gp = GPy.models.GPRegression(init_X,
+                                                    init_test_error,
+                                                    self.test_error_kernel,
+                                                    noise_var=
+                                                    self.noise_level ** 2)
+        self.test_erro_gp.optimize()
 
-        self.opt = safeopt.SafeOpt([self.gp_obj] + self.gp_constr_list,
-                                   self.parameter_set,
-                                   [-np.inf] + [0.] *
-                                   self.opt_problem.num_constrs,
-                                   lipschitz=None,
-                                   threshold=0.1
-                                   )
-        self.cumu_vio_cost = np.zeros(self.opt_problem.num_constrs)
+        self.exec_time_gp = GPy.models.GPRegression(init_X,
+                                                    init_exec_time,
+                                                    self.exec_time_kernel,
+                                                    noise_var=
+                                                    self.noise_level ** 2)
+        self.exec_time_gp.optimize()
 
-    def get_obj_constr_val(self, x_arr, noise=False):
-        obj_val_arr, constr_val_arr = self.opt_problem.sample_point(x_arr)
-        obj_val_arr = -1 * obj_val_arr
-        constr_val_arr = -1 * constr_val_arr
-        return obj_val_arr, constr_val_arr
+    def get_acquisition(self, type='EI'):
+        obj_mean, obj_var = self.test_erro_gp.predict(self.candidates)
+        obj_mean = obj_mean.squeeze()
+        obj_var = obj_var.squeeze()
 
-    def plot(self):
-        # Plot the GP
-        self.opt.plot(100)
-        # Plot the true function
-        y, constr_val = self.get_obj_constr_val(self.parameter_set,
-                                                noise=False)
+        if type == 'EI':
+            # calculate EI
+            f_min = self.best_obj
+            z = (f_min - obj_mean)/np.maximum(np.sqrt(obj_var), self.num_eps)
+            EI = (f_min - obj_mean) * norm.cdf(z) + \
+                np.sqrt(obj_var) * norm.pdf(z)
+            return EI
 
     def make_step(self):
-        x_next = self.opt.optimize()
-        x_next = np.array([x_next])
-        # Get a measurement from the real system
-        y_obj, constr_vals = self.get_obj_constr_val(x_next)
-        if np.all(constr_vals >= 0):
-            self.best_obj = max(self.best_obj, y_obj[0, 0])
-        y_meas = np.hstack((y_obj, constr_vals))
-        violation_cost = self.opt_problem.get_total_violation_cost(-constr_vals)
-        violation_total_cost = np.sum(violation_cost, axis=0)
-        self.cumu_vio_cost = self.cumu_vio_cost + violation_total_cost
-        # Add this to the GP model
-        self.opt.add_new_data_point(x_next, y_meas)
-        return y_obj, constr_vals
+        acq = self.get_acquisition()
+        maximizer = self.candidates[np.argmax(acq), :]
+        next_point = dict(zip(self.hyper_param_names,
+                              maximizer))
+        maximizer = np.expand_dims(maximizer, axis=0)
+        # evaluate the next point's function
+        train_error, test_error, exec_time = self.get_obj(next_point)
+        self.best_obj = min(test_error[0, 0], self.best_obj)
+        self.train_erro_gp.set_XY(np.vstack([self.train_erro_gp.X, maximizer]),
+                                  np.vstakc([self.train_erro_gp.Y, train_error])
+                                  )
+        self.train_erro_gp.optimize()
+
+        self.test_erro_gp.set_XY(np.vstack([self.test_erro_gp.X, maximizer]),
+                                  np.vstakc([self.test_erro_gp.Y, test_error])
+                                  )
+        self.test_erro_gp.optimize()
+
+        self.exec_time_gp.set_XY(np.vstack([self.exec_time_gp.X, maximizer]),
+                                  np.vstakc([self.exec_time_gp.Y, exec_time])
+                                  )
+        self.exec_time_gp.optimize()
+
+        return train_error[0, 0], test_error[0, 0], exec_time[0, 0]
