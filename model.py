@@ -103,8 +103,8 @@ def run(lr=1e-1,mini_batch_size=100,nb_epochs=100,nb_hidden=100,nb_layers=2,drop
     nb_test_errors= compute_nb_errors(model.eval(), test_input, test_target)
     exec_time = (datetime.datetime.now() - start).microseconds
 
-    return nb_train_errors,nb_test_errors,exec_time
+    return nb_train_errors/10,nb_test_errors/10,exec_time
 
 
-for i in range(5):
-    run()
+#for i in range(5):
+   #run()
