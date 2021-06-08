@@ -6,6 +6,7 @@ import datetime
 
 PARAMETER_NAMES = {'lr', 'momentum', 'mini_batch_size', 'num_epochs', 'num_hidden', 'num_layers'}
 
+
 class Net(nn.Module):
     def __init__(self, num_hidden=100, num_layers=2, dropout=0.):
         super().__init__()
