@@ -1,22 +1,37 @@
+import math
 import numpy as np
 
 from model import *
 from torch import optim
 
 
-def grid_hyperparameters(parameters_range, grid_size=5):
+def grid_hyperparameters(parameters_range):
     parameters = dict()
     
-    for name, (start, end) in parameters_range.items():    
+    for name, (start, end, grid_size, space) in parameters_range.items():    
         if start > end:
             t = start
             start = end
             end = t
-            
-        if isinstance(start, int) and isinstance(end, int):
-            parameters[name] = np.linspace(start, end + 1, grid_size, endpoint=False, dtype=int)
-        else:
+        
+        if space[:17] == 'discrete_linspace':
+            parameters[name] = np.linspace(start, end, grid_size, dtype=int)
+        elif space[:8] == 'linspace':
             parameters[name] = np.linspace(start, end, grid_size)
+        elif space[:17] == 'discrete_logspace':
+            base = int(space[18:])
+            start = math.log(start, base)
+            end = math.log(end, base)
+            parameters[name] = np.logspace(start, end, grid_size, base=base, dtype=int)
+        elif space[:8] == 'logspace':
+            base = int(space[9:])
+            start = math.log(start, base)
+            end = math.log(end, base)
+            parameters[name] = np.logspace(start, end, grid_size, base=base)
+        elif space == 'fixed' and grid_size == 1 and start == end:
+            parameters[name] = [start]
+        else:
+            raise ValueError
             
     return parameters
 
