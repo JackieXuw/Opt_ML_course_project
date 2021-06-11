@@ -43,13 +43,14 @@ def generate_discrete_loguniform(low, high, n, base):
 
 def random_search(parameters):
     p = dict()
-    results = dict()
-    
+    #results = dict()
+    results = list()
+
     num_trials = len(parameters['num_hidden'])
     for i in range(num_trials):
         for k in parameters.keys():
             p[k] = parameters[k][i]
-            
+
         model = Net(num_hidden=p['num_hidden'], num_layers=p['num_layers'])
         sgd = optim.SGD(model.parameters(), lr=p['lr'], momentum=p['momentum'])
         train_error, test_error, exec_time = run(model, sgd, mini_batch_size=p['mini_batch_size'], num_epochs=p['num_epochs'])

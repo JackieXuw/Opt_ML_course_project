@@ -10,8 +10,8 @@ PARAMETER_NAMES = {'lr', 'momentum', 'mini_batch_size', 'num_epochs', 'num_hidde
 class Net(nn.Module):
     def __init__(self, num_hidden=100, num_layers=2, dropout=0.):
         super().__init__()
-        
-        self.dropout = nn.Dropout(dropout)  
+
+        self.dropout = nn.Dropout(dropout)
         self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=5)
         self.fc_i = nn.Linear(256, num_hidden)
@@ -30,7 +30,7 @@ class Net(nn.Module):
             x = fc(x)
             x = self.dropout(x)
         x = self.fc_o(x)
-        
+
         return x
 
 
@@ -66,7 +66,7 @@ def compute_nb_errors(model, input, target, mini_batch_size=100):
 def convert_to_one_hot_labels(input, target):
     tmp = input.new_zeros(target.size(0), target.max() + 1)
     tmp.scatter_(1, target.view(-1, 1), 1.0)
-    
+
     return tmp
 
 
@@ -90,7 +90,7 @@ def load_data():
     mu, std = train_input.mean(), train_input.std()
     train_input.sub_(mu).div_(std)
     test_input.sub_(mu).div_(std)
-    
+
     return train_input, train_target, test_input, test_target
 
 

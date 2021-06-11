@@ -5,13 +5,37 @@ import numpy as np
 from scipy.stats import norm
 import GPy
 import itertools
+import math
+from model import *
+from torch import optim
 
+
+def bayesian_run(num_hidden, num_layers, lr, momentum, mini_batch_size, \
+                 num_epochs):
+    train_model = Net(num_hidden=num_hidden, num_layers=num_layers)
+    sgd = optim.SGD(train_model.parameters(), lr=lr, momentum=momentum)
+    train_error, test_error, exec_time = run(train_model, sgd,
+                                             mini_batch_size=mini_batch_size,
+                                             num_epochs=num_epochs
+                                             )
+    return train_error, test_error, exec_time
 
 class TuneBO:
 
-    def __init__(self, obj_fun, hyper_params_dict, init_hyper_param):
+    def __init__(self, obj_fun=bayesian_run, hyper_params_dict=None, init_hyper_param=None,
+                 parameters_range=None):
+        self.parameters_range = parameters_range
+        if parameters_range is not None:
+            hyper_params_dict = self.transform_parameters()
+        else:
+            self.hyper_param_names = hyper_params_dict.keys()
+            self.init_hyper_param = init_hyper_param
+            space_type_dict = dict()
+            for name in self.hyper_param_names:
+                space_type_dict[name] = ('linspace',)
+            self.space_type_dict = space_type_dict
+
         self.obj_fun = obj_fun
-        self.hyper_param_names = hyper_params_dict.keys()
         self.candidates = list(itertools.product(*list(hyper_params_dict[key]
                                                        for key in
                                                        self.hyper_param_names))
@@ -20,11 +44,56 @@ class TuneBO:
         self.noise_level = 0.1
         self.num_eps = 1e-6
         self.set_kernel()
-        self.init_hyper_param = init_hyper_param
         self.evaluation_history = []   # each item: (point, performance_metric)
         self.setup_optimizer()
 
+    def transform_parameters(self):
+        parameters_range = self.parameters_range
+        hyper_params_dict = dict()
+        space_type_dict = dict()
+        for name, (start, end, grid_size, space) in parameters_range.items():
+            if space[:17] == 'discrete_linspace':
+                hyper_params_dict[name] = np.linspace(start, end, grid_size,
+                                                      dtype=int)
+                space_type_dict[name] = ('discrete_linspace', )
+            elif space[:8] == 'linspace':
+                hyper_params_dict[name] = np.linspace(start, end, grid_size)
+                space_type_dict[name] = ('linspace', )
+            elif space[:17] == 'discrete_logspace':
+                base = int(space[18:])
+                start = math.log(start, base)
+                end = math.log(end, base)
+                hyper_params_dict[name] = np.linspace(start, end, grid_size)
+                space_type_dict[name] = ('discrete_logspace', base)
+            elif space[:8] == 'logspace':
+                base = int(space[9:])
+                start = math.log(start, base)
+                end = math.log(end, base)
+                hyper_params_dict[name] = np.linspace(start, end, grid_size)
+                space_type_dict[name] = ('logspace', base)
+            elif space == 'fixed' and grid_size == 1 and start == end:
+                hyper_params_dict[name] = [start]
+                space_type_dict[name] = ('fixed', )
+            else:
+                raise ValueError
+        self.hyper_param_names = list(hyper_params_dict.keys())
+        self.space_type_dict = space_type_dict
+        init_hyper_param = []
+        for name in self.hyper_param_names:
+            val = np.random.choice(hyper_params_dict[name])
+            init_hyper_param.append(val)
+        self.init_hyper_param = init_hyper_param
+        return hyper_params_dict
+
     def get_obj(self, hyper_param_point_dict):
+        for name in self.hyper_param_names:
+            if 'log' in self.space_type_dict[name][0]:
+                base = self.space_type_dict[name][1]
+                hyper_param_point_dict[name] = base ** \
+                    hyper_param_point_dict[name]
+                if 'discrete' in self.space_type_dict[name][0]:
+                    hyper_param_point_dict[name] = int(
+                        hyper_param_point_dict[name])
         train_error, test_error, exec_time = \
             self.obj_fun(**hyper_param_point_dict)
         self.evaluation_history.append((hyper_param_point_dict,
@@ -119,3 +188,7 @@ class TuneBO:
         self.exec_time_gp.optimize()
 
         return train_error[0, 0], test_error[0, 0], exec_time[0, 0]
+
+    def run(self, num_evals=20):
+        for _ in range(num_evals):
+            self.make_step()
