@@ -1,8 +1,8 @@
 import torch
-from torch import nn
+from torch import nn, optim
 from torch.nn import functional as F
 from torchvision import datasets
-import datetime
+import time
 
 PARAMETER_NAMES = {'lr', 'momentum', 'mini_batch_size', 'num_epochs', 'num_hidden', 'num_layers'}
 
@@ -36,11 +36,12 @@ class Net(nn.Module):
 
 def train_model(model, optimizer, train_input, train_target, mini_batch_size=100, num_epochs=100):
     criterion = nn.MSELoss()
+    size = int(train_input.size(0) / mini_batch_size) * mini_batch_size
 
     for e in range(num_epochs):
         acc_loss = 0
 
-        for b in range(0, train_input.size(0), mini_batch_size):
+        for b in range(0, size, mini_batch_size):
             optimizer.zero_grad()
             output = model(train_input.narrow(0, b, mini_batch_size))
             loss = criterion(output, train_target.narrow(0, b, mini_batch_size))
@@ -53,12 +54,11 @@ def train_model(model, optimizer, train_input, train_target, mini_batch_size=100
 def compute_nb_errors(model, input, target, mini_batch_size=100):
     nb_errors = 0
 
-    for b in range(0, input.size(0), mini_batch_size):
-        output = model(input.narrow(0, b, mini_batch_size))
-        _, predicted_classes = output.max(1)
-        for k in range(mini_batch_size):
-            if target[b + k, predicted_classes[k]] <= 0:
-                nb_errors = nb_errors + 1
+    output = model(input)
+    _, predicted_classes = output.max(1)
+    for k in range(input.size(0)):
+        if target[k, predicted_classes[k]] <= 0:
+            nb_errors = nb_errors + 1
 
     return nb_errors
 
@@ -97,12 +97,14 @@ def load_data():
 def run(model, optimizer, mini_batch_size=100, num_epochs=100):
     train_input, train_target, test_input, test_target = load_data()
 
-    start = datetime.datetime.now()
+    start = time.time()
     model.train()
     train_model(model, optimizer, train_input, train_target, mini_batch_size=mini_batch_size, num_epochs=num_epochs)
-    exec_time = (datetime.datetime.now() - start).microseconds
+    exec_time = (time.time() - start)
 
     nb_train_errors = compute_nb_errors(model.eval(), train_input, train_target)
-    nb_test_errors= compute_nb_errors(model.eval(), test_input, test_target)
+    nb_test_errors = compute_nb_errors(model.eval(), test_input, test_target)
 
-    return nb_train_errors/10, nb_test_errors/10, exec_time
+    return nb_train_errors / 10, nb_test_errors / 10, exec_time
+
+
