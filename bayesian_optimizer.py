@@ -155,6 +155,11 @@ class TuneBO:
         obj_mean = obj_mean.squeeze()
         obj_var = obj_var.squeeze()
 
+        time_mean, time_var = self.exec_time_gp.predict(np.array(
+            self.candidates))
+        time_mean = time_mean.squeeze()
+        time_var = time_var.squeeze()
+
         if type == 'EI':
             # calculate EI
             f_min = self.best_obj
@@ -163,8 +168,21 @@ class TuneBO:
                 np.sqrt(obj_var) * norm.pdf(z)
             return EI
 
+        if type == 'EIpC':
+            # calculate EI per unit cost (the cost is exec time)
+            f_min = self.best_obj
+            z = (f_min - obj_mean)/np.maximum(np.sqrt(obj_var), self.num_eps)
+            EI = (f_min - obj_mean) * norm.cdf(z) + \
+                np.sqrt(obj_var) * norm.pdf(z)
+            Cost = np.maximum(time_mean, 3) ** 0.5
+            EIpC = EI/Cost
+            return EIpC
+
+
+
+
     def make_step(self):
-        acq = self.get_acquisition()
+        acq = self.get_acquisition(type='EIpC')
         maximizer = self.candidates[np.argmax(acq)]
         next_point = dict(zip(self.hyper_param_names,
                               maximizer))
@@ -172,20 +190,47 @@ class TuneBO:
         # evaluate the next point's function
         train_error, test_error, exec_time = self.get_obj(next_point)
         self.best_obj = min(test_error[0, 0], self.best_obj)
-        self.train_erro_gp.set_XY(np.vstack([self.train_erro_gp.X, maximizer]),
-                                  np.vstack([self.train_erro_gp.Y, train_error])
-                                  )
-        self.train_erro_gp.optimize()
 
-        self.test_erro_gp.set_XY(np.vstack([self.test_erro_gp.X, maximizer]),
-                                  np.vstack([self.test_erro_gp.Y, test_error])
+        try:
+            X = self.train_erro_gp.X
+            Y = self.train_erro_gp.Y
+            self.train_erro_gp.set_XY(np.vstack(
+                [self.train_erro_gp.X, maximizer]
+            ),
+                                  np.vstack(
+                                      [self.train_erro_gp.Y, train_error])
                                   )
-        self.test_erro_gp.optimize()
+            self.train_erro_gp.optimize()
+        except Exception as e:
+            print(e.message, e.args)
+            self.train_erro_gp.set_XY(X, Y)
+            self.train_erro_gp.optimize()
 
-        self.exec_time_gp.set_XY(np.vstack([self.exec_time_gp.X, maximizer]),
+        try:
+            X = self.test_erro_gp.X
+            Y = self.test_erro_gp.Y
+            self.test_erro_gp.set_XY(np.vstack(
+                [self.test_erro_gp.X, maximizer]),
+                                  np.vstack(
+                                      [self.test_erro_gp.Y, test_error])
+                                  )
+            self.test_erro_gp.optimize()
+        except Exception as e:
+            print(e.message, e.args)
+            self.test_erro_gp.set_XY(X, Y)
+            self.test_erro_gp.optimize()
+
+        try:
+            X = self.exec_time_gp.X
+            Y = self.exec_time_gp.Y
+            self.exec_time_gp.set_XY(np.vstack([self.exec_time_gp.X, maximizer]),
                                   np.vstack([self.exec_time_gp.Y, exec_time])
                                   )
-        self.exec_time_gp.optimize()
+            self.exec_time_gp.optimize()
+        except Exception as e:
+            print(e.message, e.args)
+            self.exec_time_gp.set_XY(X, Y)
+            self.optimize()
 
         return train_error[0, 0], test_error[0, 0], exec_time[0, 0]
 
