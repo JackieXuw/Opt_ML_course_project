@@ -22,8 +22,8 @@ def bayesian_run(num_hidden, num_layers, lr, momentum, mini_batch_size, \
 
 class TuneBO:
 
-    def __init__(self, obj_fun=bayesian_run, hyper_params_dict=None, init_hyper_param=None,
-                 parameters_range=None):
+    def __init__(self, obj_fun=bayesian_run, hyper_params_dict=None, \
+                 init_hyper_param=None, parameters_range=None):
         self.parameters_range = parameters_range
         if parameters_range is not None:
             hyper_params_dict = self.transform_parameters()
