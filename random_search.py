@@ -2,7 +2,7 @@ import math
 import numpy as np
 from model import *
 from torch import optim
-from results import *
+from res import *
 
 # It initializes the hyperparameters.
 # The input parameters_range is a dictionary with the parameters' names as keys, and their types and range as values.
@@ -61,7 +61,7 @@ def random_search(parameters,offline=False):
             p[k] = parameters[k][i]
 
         if offline:
-            train_error, test_error, exec_time = get_results(lr=p['lr'], momentum=p['momentum'], num_hidden=p['num_hidden'],
+            train_error, test_error, exec_time = get_res(lr=p['lr'], momentum=p['momentum'], num_hidden=p['num_hidden'],
                                                          num_layers=p['num_layers'],
                                                          mini_batch_size=p['mini_batch_size'],
                                                          num_epochs=p['num_epochs'])
