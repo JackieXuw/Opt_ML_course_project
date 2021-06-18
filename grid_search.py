@@ -3,8 +3,12 @@ import numpy as np
 
 from model import *
 from torch import optim
+from results import *
 
-
+# It initializes the hyperparameters.
+# The input parameters_range is a dictionary with the parameters' names as keys and their types and range as values.
+# It returns a new dictionary with the parameters' names as keys and the set of possible values as values.
+# Each parameter has equidistant possible values.
 def grid_hyperparameters(parameters_range):
     parameters = dict()
 
@@ -36,26 +40,38 @@ def grid_hyperparameters(parameters_range):
     return parameters
 
 
-def grid_search(parameters, limit=10000):
+# It takes as input the output dictionary of grid_hyperparameters().
+# In each iteration, it computes the errors and the execution time of the values' combinations,
+# and it stores them into a new dictionary.
+# Once the operations are completed, or the limit is exceeded, it returns the dictionary.
+def grid_search(parameters, limit=1000, offline=False):
     p = dict()
     results = []
     count = np.zeros(len(parameters), dtype=np.int)
+    t=time.time()
 
     while limit > 0:
         limit = limit - 1
 
         for i, k in enumerate(parameters.keys()):
             p[k] = parameters[k][count[i]]
-
-        model = Net(num_hidden=p['num_hidden'], num_layers=p['num_layers'])
-        sgd = optim.SGD(model.parameters(), lr=p['lr'], momentum=p['momentum'])
-        train_error, test_error, exec_time = run(model, sgd, mini_batch_size=p['mini_batch_size'], num_epochs=p['num_epochs'])
+        if offline:
+            train_error, test_error, exec_time = get_results(lr=p['lr'], momentum=p['momentum'],num_hidden=p['num_hidden'], num_layers=p['num_layers'], mini_batch_size=p['mini_batch_size'],num_epochs=p['num_epochs'])
+        else:
+            model = Net(num_hidden=p['num_hidden'], num_layers=p['num_layers'])
+            sgd = optim.SGD(model.parameters(), lr=p['lr'], momentum=p['momentum'])
+            train_error, test_error, exec_time = run(model, sgd, mini_batch_size=p['mini_batch_size'],
+                                                     num_epochs=p['num_epochs'])
         result = dict(zip(p.keys(), p.values()))
         result['train_error'] = train_error
         result['test_error'] = test_error
         result['exec_time'] = exec_time
+        if offline:
+            result['run_time'] = time.time() - t +exec_time
+        else:
+            result['run_time'] = time.time() - t
+        t=time.time()
         results.append(result)
-
 
         for i, k in enumerate(parameters.keys()):
             count[i] = count[i] + 1
@@ -67,3 +83,5 @@ def grid_search(parameters, limit=10000):
                 return results
 
             count[i] = 0
+    return results
+
