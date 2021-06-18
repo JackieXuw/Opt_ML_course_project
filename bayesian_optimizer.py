@@ -23,7 +23,7 @@ def bayesian_run(num_hidden, num_layers, lr, momentum, mini_batch_size,
     :param num_epochs: number of epochs
     """
     if offline:
-        return get_results(lr=lr,momentum=momentum,mini_batch_size=mini_batch_size,num_hidden=num_hidden,num_layers=num_layers,num_epochs=num_epochs)
+        return get_res(lr=lr,momentum=momentum,mini_batch_size=mini_batch_size,num_hidden=num_hidden,num_layers=num_layers,num_epochs=num_epochs)
     train_model = Net(num_hidden=num_hidden, num_layers=num_layers)
     sgd = optim.SGD(train_model.parameters(), lr=lr, momentum=momentum)
     train_error, test_error, exec_time = run(train_model, sgd,
@@ -263,7 +263,7 @@ class TuneBO:
                                   )
             self.train_erro_gp.optimize()
         except Exception as e:
-            print(e.message, e.args)
+            #print(e.message, e.args)
             self.train_erro_gp.set_XY(X, Y)
             self.train_erro_gp.optimize()
 
@@ -277,7 +277,7 @@ class TuneBO:
                                   )
             self.test_erro_gp.optimize()
         except Exception as e:
-            print(e.message, e.args)
+            #print(e.message, e.args)
             self.test_erro_gp.set_XY(X, Y)
             self.test_erro_gp.optimize()
 
@@ -289,7 +289,7 @@ class TuneBO:
                                   )
             self.exec_time_gp.optimize()
         except Exception as e:
-            print(e.message, e.args)
+            #print(e.message, e.args)
             self.exec_time_gp.set_XY(X, Y)
             self.optimize()
 
