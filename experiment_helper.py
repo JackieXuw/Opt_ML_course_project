@@ -39,6 +39,10 @@ def visualize_experiment(results, name=None):
 
 
 def visualize_run_time(results):
+    '''
+    Plot the test error in results against the running time used to attain it.
+    Data points are plotted every 60 seconds.
+    '''
     max_t = 0.0
     for r in results:
         max_t += r['run_time']
@@ -62,7 +66,9 @@ def visualize_run_time(results):
 
     plt.plot(x, y, color='orange')
     plt.show()
+    
     return x, y
+
 
 def keep_best_results(results):
     decreasing_results = []
@@ -127,7 +133,6 @@ def plot_all_results(random_search_results, grid_search_results, bayesian_optimi
 
     X = range(1, max(len(m1_r), len(m1_g), len(m1_b)) + 1)
     x=np.array(X)*20
-    print(x)
     fig = plt.figure(figsize=(12, 12))
     ax1 = plt.subplot(311)
     ax1.set_xlabel('Run time[s]')
@@ -158,7 +163,8 @@ def plot_all_results(random_search_results, grid_search_results, bayesian_optimi
     plt.plot(x[:len(m3_g)], m3_g, c='orange', label='Grid search')
     plt.errorbar(x[:len(m3_b)], m3_b, yerr=q3_b, c='green', label='Bayesian optimisation')
     ax3.legend()
-    plt.savefig('fig1')
+    t = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    plt.savefig('figures/fig-' + t)
 
 
 def compare(a, b):
