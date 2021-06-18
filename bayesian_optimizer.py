@@ -8,7 +8,7 @@ import itertools
 import math
 from model import *
 from torch import optim
-from res import *
+from results import *
 
 
 def bayesian_run(num_hidden, num_layers, lr, momentum, mini_batch_size,
@@ -23,7 +23,7 @@ def bayesian_run(num_hidden, num_layers, lr, momentum, mini_batch_size,
     :param num_epochs: number of epochs
     """
     if offline:
-        return get_res(lr=lr,momentum=momentum,mini_batch_size=mini_batch_size,num_hidden=num_hidden,num_layers=num_layers,num_epochs=num_epochs)
+        return get_results(lr=lr,momentum=momentum,mini_batch_size=mini_batch_size,num_hidden=num_hidden,num_layers=num_layers,num_epochs=num_epochs)
     train_model = Net(num_hidden=num_hidden, num_layers=num_layers)
     sgd = optim.SGD(train_model.parameters(), lr=lr, momentum=momentum)
     train_error, test_error, exec_time = run(train_model, sgd,

@@ -3,7 +3,7 @@ import numpy as np
 
 from model import *
 from torch import optim
-from res import *
+from results import *
 
 # It initializes the hyperparameters.
 # The input parameters_range is a dictionary with the parameters' names as keys and their types and range as values.
@@ -56,7 +56,7 @@ def grid_search(parameters, limit=1000, offline=False):
         for i, k in enumerate(parameters.keys()):
             p[k] = parameters[k][count[i]]
         if offline:
-            train_error, test_error, exec_time = get_res(lr=p['lr'], momentum=p['momentum'],num_hidden=p['num_hidden'], num_layers=p['num_layers'], mini_batch_size=p['mini_batch_size'],num_epochs=p['num_epochs'])
+            train_error, test_error, exec_time = get_results(lr=p['lr'], momentum=p['momentum'],num_hidden=p['num_hidden'], num_layers=p['num_layers'], mini_batch_size=p['mini_batch_size'],num_epochs=p['num_epochs'])
         else:
             model = Net(num_hidden=p['num_hidden'], num_layers=p['num_layers'])
             sgd = optim.SGD(model.parameters(), lr=p['lr'], momentum=p['momentum'])
